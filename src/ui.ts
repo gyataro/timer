@@ -74,11 +74,12 @@ export function renderProgramLibrary(library: ProgramLibrary): void {
     const name = document.createElement("span");
     name.className = "program-name";
     name.textContent = program.name;
-    const detail = document.createElement("span");
-    detail.className = "program-detail";
-    detail.textContent = program.selected ? "Selected" : "Timer program";
-    select.append(name, detail);
+    select.append(name);
     if (program.selected) {
+      const detail = document.createElement("span");
+      detail.className = "program-detail";
+      detail.textContent = "Selected";
+      select.append(detail);
       select.setAttribute("aria-current", "true");
     } else {
       select.onclick = () => {

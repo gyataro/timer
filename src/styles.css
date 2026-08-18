@@ -209,7 +209,8 @@ fluent-button[appearance="stealth"] {
 }
 
 .delete-dialog-content {
-  min-width: 280px;
+  box-sizing: border-box;
+  width: 100%;
   padding: 20px;
 }
 

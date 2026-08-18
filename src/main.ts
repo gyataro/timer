@@ -119,6 +119,7 @@ async function importProgram(file: File): Promise<void> {
     const program = parseProgram(source);
     const library = await invoke<ProgramLibrary>("import_program", { program, source });
     renderProgramLibrary(library);
+    applyUpdate(await invoke<TimerUpdate>("get_timer_state"));
     showProgramMessage(`Imported ${program.name}.`);
   } catch (error) {
     showProgramMessage(errorMessage(error), true);
@@ -133,6 +134,7 @@ async function selectProgram(id: string): Promise<void> {
   try {
     const library = await invoke<ProgramLibrary>("select_program", { id });
     renderProgramLibrary(library);
+    applyUpdate(await invoke<TimerUpdate>("get_timer_state"));
     showProgramMessage();
   } catch (error) {
     showProgramMessage(errorMessage(error), true);
@@ -169,6 +171,7 @@ async function deleteProgram(id: string): Promise<void> {
   try {
     const library = await invoke<ProgramLibrary>("delete_program", { id });
     renderProgramLibrary(library);
+    applyUpdate(await invoke<TimerUpdate>("get_timer_state"));
     showProgramMessage();
   } catch (error) {
     showProgramMessage(errorMessage(error), true);
