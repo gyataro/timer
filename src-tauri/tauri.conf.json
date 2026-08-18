@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Timer",
+        "title": "",
         "width": 200,
         "height": 180,
         "minWidth": 200,

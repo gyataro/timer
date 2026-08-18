@@ -111,30 +111,71 @@ body {
 
 .program-list {
   display: grid;
-  gap: 8px;
+  gap: 2px;
 }
 
 .program-row {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   box-sizing: border-box;
-  min-height: 52px;
-  padding: 6px;
+  min-height: 48px;
+  padding: 4px;
+  border-radius: var(--control-corner-radius);
+}
+
+.program-row:hover {
+  background: var(--neutral-fill-stealth-hover);
+}
+
+.program-row[data-selected="true"] {
+  background: var(--neutral-fill-stealth-active);
+}
+
+.program-row[data-selected="true"]::before {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 0;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent-fill-rest);
+  content: "";
 }
 
 .program-select {
+  width: 100%;
   min-width: 0;
   overflow: hidden;
   text-align: left;
   text-overflow: ellipsis;
 }
 
-.current-badge {
-  white-space: nowrap;
-}
-
 .program-delete {
   justify-self: end;
+}
+
+.delete-dialog-content {
+  min-width: 280px;
+  padding: 20px;
+}
+
+.delete-dialog-content h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.delete-dialog-content p {
+  margin: 0 0 24px;
+  color: var(--neutral-foreground-hint);
+  line-height: 1.4;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }

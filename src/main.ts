@@ -12,9 +12,8 @@ import type { ProgramLibrary, TimerUpdate } from "./types";
 import {
   accentBaseColor,
   baseLayerLuminance,
-  fluentBadge,
   fluentButton,
-  fluentCard,
+  fluentDialog,
   fluentDivider,
   provideFluentDesignSystem,
   StandardLuminance,
@@ -25,9 +24,8 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 provideFluentDesignSystem().register(
-  fluentBadge(),
   fluentButton(),
-  fluentCard(),
+  fluentDialog(),
   fluentDivider(),
 );
 

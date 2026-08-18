@@ -13,6 +13,7 @@ type UiHandlers = {
 };
 
 let handlers: UiHandlers | undefined;
+let pendingDelete: { id: string; name: string } | undefined;
 
 export function renderTimer(state: TimerUpdate): void {
   const underOneMinute = state.remaining < 60;
@@ -51,8 +52,10 @@ export function renderProgramLibrary(library: ProgramLibrary): void {
   list.replaceChildren();
 
   for (const program of library.programs) {
-    const row = document.createElement("fluent-card");
+    const row = document.createElement("div");
     row.className = "program-row";
+    row.setAttribute("role", "listitem");
+    row.dataset.selected = program.selected.toString();
 
     const select = document.createElement("fluent-button");
     select.className = "program-select";
@@ -65,15 +68,7 @@ export function renderProgramLibrary(library: ProgramLibrary): void {
       select.onclick = () => void handlers?.selectProgram(program.id);
     }
 
-    if (program.selected) {
-      const badge = document.createElement("fluent-badge");
-      badge.className = "current-badge";
-      badge.setAttribute("appearance", "accent");
-      badge.textContent = "Current";
-      row.append(select, badge);
-    } else {
-      row.append(select);
-    }
+    row.append(select);
 
     const remove = document.createElement("fluent-button");
     remove.className = "program-delete";
@@ -86,9 +81,11 @@ export function renderProgramLibrary(library: ProgramLibrary): void {
       remove.title = "At least one program is required";
     } else {
       remove.onclick = () => {
-        if (window.confirm(`Delete "${program.name}"?`)) {
-          void handlers?.deleteProgram(program.id);
-        }
+        pendingDelete = { id: program.id, name: program.name };
+        element<HTMLParagraphElement>("delete-dialog-description").textContent =
+          `“${program.name}” will be removed from Timer.`;
+        element("delete-dialog").hidden = false;
+        element("cancel-delete").focus();
       };
     }
     row.append(remove);
@@ -126,4 +123,16 @@ export function setUiHandlers(next: UiHandlers): void {
     fileInput.value = "";
     if (file) void next.importProgram(file);
   };
+
+  const closeDeleteDialog = (): void => {
+    element("delete-dialog").hidden = true;
+    pendingDelete = undefined;
+  };
+  element("cancel-delete").onclick = closeDeleteDialog;
+  element("confirm-delete").onclick = () => {
+    const program = pendingDelete;
+    closeDeleteDialog();
+    if (program) void next.deleteProgram(program.id);
+  };
+  element("delete-dialog").addEventListener("dismiss", closeDeleteDialog);
 }

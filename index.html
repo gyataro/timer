@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="/src/styles.css" />
-    <title>Timer</title>
+    <title></title>
   </head>
   <body>
     <section id="timer-view" class="view">
@@ -60,13 +60,27 @@
         </fluent-button>
         <h1>Programs</h1>
         <fluent-button id="upload-program" appearance="accent">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+            <path d="M11 15V7.8l-2.6 2.6L7 9l5-5 5 5-1.4 1.4L13 7.8V15h-2zM5 20v-5h2v3h10v-3h2v5H5z" />
+          </svg>
           Import
         </fluent-button>
         <input id="program-file" type="file" accept=".yaml,.yml,application/yaml,text/yaml" hidden />
       </header>
 
       <p id="program-message" class="program-message" role="status" hidden></p>
-      <div id="program-list" class="program-list" aria-label="Timer programs"></div>
+      <div id="program-list" class="program-list" role="list" aria-label="Timer programs"></div>
+
+      <fluent-dialog id="delete-dialog" aria-labelledby="delete-dialog-title" hidden>
+        <div class="delete-dialog-content">
+          <h2 id="delete-dialog-title">Delete program?</h2>
+          <p id="delete-dialog-description"></p>
+          <div class="dialog-actions">
+            <fluent-button id="cancel-delete" appearance="outline">Cancel</fluent-button>
+            <fluent-button id="confirm-delete" appearance="accent">Delete</fluent-button>
+          </div>
+        </div>
+      </fluent-dialog>
     </section>
 
     <script type="module" src="/src/main.ts"></script>
