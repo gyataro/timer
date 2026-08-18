@@ -42,4 +42,6 @@ export type TimerUpdate = {
   remaining: number;
   paused: boolean;
   running: boolean;
+  canGoPrev: boolean;
+  canGoNext: boolean;
 };

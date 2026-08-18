@@ -14,8 +14,8 @@ use std::{
 };
 use tauri::{
     menu::{Menu, MenuItem},
-    tray::TrayIconBuilder,
-    Emitter, Manager, State,
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    AppHandle, Emitter, Manager, State,
 };
 
 const MAX_SOURCE_BYTES: usize = 1024 * 1024;
@@ -150,9 +150,11 @@ struct TimerUpdate {
     remaining: u64,
     paused: bool,
     running: bool,
+    can_go_prev: bool,
+    can_go_next: bool,
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, Debug, PartialEq)]
 struct Cursor {
     entry: usize,
     repetition: u64,
@@ -275,6 +277,52 @@ fn advance_cursor(program: &StoredProgram, cursor: &mut Cursor) -> Option<Activi
     current_activity_owned(program, cursor)
 }
 
+/// The (repetition, activity) cursor position of an entry's last step.
+fn last_step_within(entry: &ProgramEntry) -> (u64, usize) {
+    match entry {
+        ProgramEntry::Activity { .. } => (0, 0),
+        ProgramEntry::Repeat { count, activities } => (count - 1, activities.len() - 1),
+    }
+}
+
+/// Moves the cursor to the previous activity, wrapping to the program's
+/// last activity when already at the first one. Unlike `advance_cursor`,
+/// this is pure navigation: it never changes whether the timer is running.
+fn retreat_cursor(program: &StoredProgram, cursor: &mut Cursor) -> Activity {
+    if cursor.activity > 0 {
+        cursor.activity -= 1;
+    } else if cursor.repetition > 0 {
+        cursor.repetition -= 1;
+        cursor.activity = last_step_within(&program.entries[cursor.entry]).1;
+    } else {
+        cursor.entry = if cursor.entry > 0 {
+            cursor.entry - 1
+        } else {
+            program.entries.len() - 1
+        };
+        let (repetition, activity) = last_step_within(&program.entries[cursor.entry]);
+        cursor.repetition = repetition;
+        cursor.activity = activity;
+    }
+    current_activity_owned(program, cursor).expect("validated program has a first activity")
+}
+
+/// Whether "prev" should be allowed: always for a repeating program, or
+/// only past the first activity for a non-repeating one.
+fn can_go_prev(program: &StoredProgram, cursor: &Cursor) -> bool {
+    program.repeat || *cursor != Cursor::default()
+}
+
+/// Whether "next" should be allowed: always for a repeating program, or
+/// only before the last activity for a non-repeating one.
+fn can_go_next(program: &StoredProgram, cursor: &Cursor) -> bool {
+    if program.repeat {
+        return true;
+    }
+    let mut probe = *cursor;
+    advance_cursor(program, &mut probe).is_some()
+}
+
 /// Called when `advance_cursor` has run through every top-level entry.
 /// Resets the cursor to the first activity and reports whether the timer
 /// should keep running (the program repeats) or stop there.
@@ -338,6 +386,8 @@ fn snapshot(state: &AppState) -> TimerUpdate {
         remaining,
         paused: state.timer.paused,
         running: state.timer.running,
+        can_go_prev: can_go_prev(program, &state.timer.cursor),
+        can_go_next: can_go_next(program, &state.timer.cursor),
     }
 }
 
@@ -495,6 +545,28 @@ fn timer_action(action: &str, shared: State<'_, Shared>, app: tauri::AppHandle) 
         }
         "reset" => {
             reset_timer(&mut state);
+            changed = true;
+        }
+        "next" if can_go_next(selected_program(&state), &state.timer.cursor) => {
+            let program = selected_program(&state).clone();
+            // The guard above only lets execution reach the end of the
+            // program (advance_cursor returning None) when it repeats, so
+            // wrap_cursor always reports keep_running here.
+            let activity = match advance_cursor(&program, &mut state.timer.cursor) {
+                Some(activity) => activity,
+                None => wrap_cursor(&program, &mut state.timer.cursor).0,
+            };
+            let duration = Duration::from_secs(activity.duration);
+            state.timer.deadline = Instant::now() + duration;
+            state.timer.paused_for = duration;
+            changed = true;
+        }
+        "prev" if can_go_prev(selected_program(&state), &state.timer.cursor) => {
+            let program = selected_program(&state).clone();
+            let activity = retreat_cursor(&program, &mut state.timer.cursor);
+            let duration = Duration::from_secs(activity.duration);
+            state.timer.deadline = Instant::now() + duration;
+            state.timer.paused_for = duration;
             changed = true;
         }
         _ => {}
@@ -746,12 +818,108 @@ mod tests {
         assert_eq!(cursor.entry, 0);
     }
 
+    #[test]
+    fn retreat_cursor_reverses_advance_cursor_through_a_repeat_block() {
+        let program = program(
+            false,
+            vec![
+                activity_entry("A", 30, "red"),
+                ProgramEntry::Repeat {
+                    count: 2,
+                    activities: vec![activity("X", 10, "blue"), activity("Y", 10, "green")],
+                },
+                activity_entry("B", 30, "orange"),
+            ],
+        );
+
+        // Walk forward to the end, recording every activity title.
+        // advance_cursor invalidates the cursor on the step that returns
+        // None, so the last valid position has to be saved beforehand.
+        let mut cursor = Cursor::default();
+        let mut titles = vec![current_activity_owned(&program, &cursor).unwrap().title];
+        loop {
+            let before = cursor;
+            match advance_cursor(&program, &mut cursor) {
+                Some(activity) => titles.push(activity.title),
+                None => {
+                    cursor = before;
+                    break;
+                }
+            }
+        }
+        assert_eq!(titles, ["A", "X", "Y", "X", "Y", "B"]);
+
+        // Walking backward from the last activity should retrace the same
+        // path in reverse.
+        let mut reversed = vec![current_activity_owned(&program, &cursor).unwrap().title];
+        for _ in 0..titles.len() - 1 {
+            reversed.push(retreat_cursor(&program, &mut cursor).title);
+        }
+        titles.reverse();
+        assert_eq!(reversed, titles);
+        assert_eq!(cursor, Cursor::default());
+    }
+
+    #[test]
+    fn retreat_cursor_wraps_to_the_last_activity_at_the_start() {
+        let program = program(
+            false,
+            vec![
+                activity_entry("A", 30, "red"),
+                ProgramEntry::Repeat {
+                    count: 2,
+                    activities: vec![activity("X", 10, "blue")],
+                },
+            ],
+        );
+        let mut cursor = Cursor::default();
+        let activity = retreat_cursor(&program, &mut cursor);
+        assert_eq!(activity.title, "X");
+        assert_eq!(cursor.entry, 1);
+        assert_eq!(cursor.repetition, 1);
+        assert_eq!(cursor.activity, 0);
+    }
+
+    #[test]
+    fn prev_and_next_are_disabled_at_the_edges_of_a_non_repeating_program() {
+        let program = program(
+            false,
+            vec![
+                activity_entry("A", 30, "red"),
+                activity_entry("B", 30, "blue"),
+            ],
+        );
+        let mut cursor = Cursor::default();
+        assert!(!can_go_prev(&program, &cursor));
+        assert!(can_go_next(&program, &cursor));
+
+        advance_cursor(&program, &mut cursor);
+        assert!(can_go_prev(&program, &cursor));
+        assert!(!can_go_next(&program, &cursor));
+    }
+
+    #[test]
+    fn prev_and_next_are_always_enabled_for_a_repeating_program() {
+        let program = program(true, vec![activity_entry("A", 30, "red")]);
+        let cursor = Cursor::default();
+        assert!(can_go_prev(&program, &cursor));
+        assert!(can_go_next(&program, &cursor));
+    }
+
     fn activity_entry(title: &str, duration: u64, color: &str) -> ProgramEntry {
         ProgramEntry::Activity {
             title: title.into(),
             duration,
             color: color.into(),
         }
+    }
+}
+
+fn show_main_window(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
     }
 }
 
@@ -797,15 +965,19 @@ pub fn run() {
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(move |app, event| match event.id.as_ref() {
-                    "show" => {
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.unminimize();
-                            let _ = window.set_focus();
-                        }
-                    }
+                    "show" => show_main_window(app),
                     "quit" => app.exit(0),
                     _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        show_main_window(tray.app_handle());
+                    }
                 })
                 .build(app)?;
 

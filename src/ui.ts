@@ -28,6 +28,8 @@ export function renderTimer(state: TimerUpdate): void {
   element("play").hidden = state.running || state.paused;
   element("pause").hidden = !state.running || state.paused;
   element("resume").hidden = !state.paused;
+  element<HTMLButtonElement>("prev").disabled = !state.canGoPrev;
+  element<HTMLButtonElement>("next").disabled = !state.canGoNext;
 }
 
 function icon(path: string): SVGSVGElement {
@@ -162,6 +164,8 @@ export function setUiHandlers(next: UiHandlers): void {
   element("pause").onclick = () => void next.timerAction("pause");
   element("resume").onclick = () => void next.timerAction("resume");
   element("reset").onclick = () => void next.timerAction("reset");
+  element("prev").onclick = () => void next.timerAction("prev");
+  element("next").onclick = () => void next.timerAction("next");
   element("open-programs").onclick = () => void next.openPrograms();
   element("close-programs").onclick = () => void next.closePrograms();
 
