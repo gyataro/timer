@@ -1,7 +1,7 @@
 {
   "name": "timer",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A minimal 20-20-20 eye-care timer for the desktop.",
   "type": "module",
   "scripts": {
