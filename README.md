@@ -1,32 +1,42 @@
 # Timer
 
-A minimal programmable interval timer for the desktop. Timer programs are small,
-readable YAML files, and the included 20-20-20 eye-care routine works out of the
-box. The timer continues running in the system tray when its window is hidden.
+A minimal, programmable interval timer for the desktop — inspired by
+[jotaen/timer](https://github.com/jotaen/timer), rebuilt as a native app because
+one more browser tab was one too many. It follows Windows 11's native UI
+conventions (Segoe UI Variable, Fluent controls, adaptive light/dark theming) so
+it feels like part of the OS instead of a website pretending to be an app, and
+it keeps running in the system tray when its window is closed.
 
 Built with [Tauri 2](https://v2.tauri.app/), TypeScript, Vite, and [Fluent UI Web Components](https://github.com/microsoft/fluentui/tree/master/packages/web-components).
 
-## Timer programs
+## Getting started
 
-Open the program list from the timer window to import a `.yaml` or `.yml` file,
-switch the active program, or delete an imported program. Imported programs are
-copied into the application's data store; edit the original YAML in your preferred
-text editor, then delete and import it again to replace the stored copy.
+Timer programs are small, readable YAML files — no build step, no account, just
+a text file describing a sequence of activities. The included 20-20-20 eye-care
+routine works out of the box:
 
 ```yaml
-Workout:
+20-20-20:
+  repeat: true
   activities:
-    - 10s Get ready: marigold
-    - 3x:
-        - 30s Work out: red
-        - 15s Rest: green
-    - 30s Work out: red
-    - 45s Cool down: lightBlue
+    - 20m Work: blue
+    - 20s Break: green
 ```
 
-See [DSL.md](DSL.md) for the complete language specification. To create programs
-from natural-language instructions, copy [LLM_PROMPT.md](LLM_PROMPT.md) into an
-LLM chat.
+Open the program list from the timer window to import a `.yaml`/`.yml` file,
+switch the active program, export one back to disk, or delete one you no longer
+need. Imported programs are copied into the app's own data store, so editing the
+original file has no effect until you delete and re-import it.
+
+The [`examples/`](examples) folder has a few more to try or copy from:
+
+- [`20-20-20.yaml`](examples/20-20-20.yaml) — the bundled eye-care routine; repeats forever.
+- [`pomodoro.yaml`](examples/pomodoro.yaml) — four 25-minute focus blocks with short breaks, then a long break.
+- [`workout.yaml`](examples/workout.yaml) — a warm-up, two sprint/recover circuits at different paces, and a cool-down.
+- [`advanced.yaml`](examples/advanced.yaml) — a circuit that reuses one round definition twice via a YAML anchor.
+
+See [DSL.md](DSL.md) for the full language specification — durations, colors,
+repeated blocks, and the program-wide `repeat` toggle.
 
 ## Development
 
