@@ -55,7 +55,6 @@ let state: TimerUpdate = {
   remaining: 20 * 60,
   paused: false,
   running: false,
-  completed: false,
 };
 
 let secondsTick: number | undefined;

@@ -100,17 +100,17 @@ function parseEntry(value: unknown, index: number): ProgramEntry {
   const [key, body] = singleEntry(value, context);
   const repeat = repeatPattern.exec(key);
 
-  if (key === "forever" || repeat) {
+  if (repeat) {
     if (!Array.isArray(body) || body.length === 0) {
       throw new DslError(`${context} repeated block must contain activities.`);
     }
-    const count = repeat ? BigInt(repeat[1]) : null;
-    if (count !== null && count > MAX_SAFE_VALUE) {
+    const count = BigInt(repeat[1]);
+    if (count > MAX_SAFE_VALUE) {
       throw new DslError(`${context} repetition count is too large for this application.`);
     }
     return {
       type: "repeat",
-      count: count === null ? null : Number(count),
+      count: Number(count),
       activities: body.map((activity, activityIndex) =>
         parseActivity(activity, `${context}, activity ${activityIndex + 1}`),
       ),
@@ -151,17 +151,30 @@ export function parseProgram(source: string): ProgramDefinition {
 
   const [name, body] = singleEntry(root, "Program");
   if (!name.trim()) throw new DslError("The program name cannot be empty.");
-  if (!Array.isArray(body) || body.length === 0) {
+
+  let repeat = false;
+  let activities: unknown;
+  let sawActivities = false;
+  for (const [key, value] of mappingEntries(body, "Program body")) {
+    if (key === "repeat") {
+      if (typeof value !== "boolean") {
+        throw new DslError('Program "repeat" must be true or false.');
+      }
+      repeat = value;
+    } else if (key === "activities") {
+      activities = value;
+      sawActivities = true;
+    } else {
+      throw new DslError(`Program body has unknown key "${String(key)}".`);
+    }
+  }
+  if (!sawActivities) {
+    throw new DslError('Program body must have an "activities" key.');
+  }
+  if (!Array.isArray(activities) || activities.length === 0) {
     throw new DslError("A program must contain at least one entry.");
   }
 
-  const entries = body.map(parseEntry);
-  const foreverIndex = entries.findIndex(
-    (entry) => entry.type === "repeat" && entry.count === null,
-  );
-  if (foreverIndex >= 0 && foreverIndex !== entries.length - 1) {
-    throw new DslError('The "forever" block must be the final program entry.');
-  }
-
-  return { name: name.trim(), entries };
+  const entries = activities.map(parseEntry);
+  return { name: name.trim(), repeat, entries };
 }

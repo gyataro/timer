@@ -15,12 +15,13 @@ text editor, then delete and import it again to replace the stored copy.
 
 ```yaml
 Workout:
-  - 10s Get ready: marigold
-  - 3x:
-      - 30s Work out: red
-      - 15s Rest: green
-  - 30s Work out: red
-  - 45s Cool down: lightBlue
+  activities:
+    - 10s Get ready: marigold
+    - 3x:
+        - 30s Work out: red
+        - 15s Rest: green
+    - 30s Work out: red
+    - 45s Cool down: lightBlue
 ```
 
 See [DSL.md](DSL.md) for the complete language specification. To create programs

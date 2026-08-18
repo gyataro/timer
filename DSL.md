@@ -15,6 +15,8 @@ conformance requirements.
 - Repeated blocks are anonymous and cannot be nested.
 - Special handling for the final repetition does not exist. Write a different
   ending explicitly after the repeated block.
+- A program's own repetition is a single whole-program toggle, not a property
+  of any individual block.
 - Programs use named Fluent color families instead of raw color values.
 - YAML features are optional conveniences, not part of the timer execution model.
 
@@ -22,22 +24,23 @@ conformance requirements.
 
 ```yaml
 Workout:
-  - 10s Get ready: marigold
+  activities:
+    - 10s Get ready: marigold
 
-  - 3x:
-      - 30s Work out: red
-      - 15s Rest: green
+    - 3x:
+        - 30s Work out: red
+        - 15s Rest: green
 
-  - 30s Work out: red
+    - 30s Work out: red
 
-  - 2x:
-      - 45s Stretch: blue
-      - 15s Relax: lavender
-      - 10s Change position: orange
+    - 2x:
+        - 45s Stretch: blue
+        - 15s Relax: lavender
+        - 10s Change position: orange
 
-  - 45s Stretch: blue
-  - 15s Relax: lavender
-  - 45s Cool down: lightBlue
+    - 45s Stretch: blue
+    - 15s Relax: lavender
+    - 45s Cool down: lightBlue
 ```
 
 The first repeated block produces this timeline:
@@ -48,6 +51,9 @@ Work out, Rest, Work out, Rest, Work out, Rest, Work out
 
 The final `Work out` is written explicitly. There is no "except on the last
 repetition" modifier.
+
+This program has no `repeat` key, so it stops after "Cool down" and returns to
+"Get ready", ready to be started again.
 
 ## YAML document
 
@@ -77,19 +83,26 @@ The document root MUST be a mapping with exactly one entry:
 
 ```yaml
 Program name:
-  - entry
-  - entry
+  activities:
+    - entry
+    - entry
 ```
 
 The mapping key is the program name. It MUST be a non-empty string after trimming
-leading and trailing whitespace. The mapping value MUST be a non-empty sequence of
-activities and repeated blocks.
+leading and trailing whitespace.
+
+The mapping value MUST be a mapping with an `activities` key and MAY have a
+`repeat` key. A program body MUST NOT contain any other key.
+
+`activities` MUST be a non-empty sequence of activities and finite repeated
+blocks. See Repeat below for the `repeat` key.
 
 Program names may contain Unicode text. Quote a name when YAML requires it:
 
 ```yaml
 "Morning: mobility":
-  - 5m Stretch: lavender
+  activities:
+    - 5m Stretch: lavender
 ```
 
 ## Activity
@@ -230,23 +243,28 @@ exceptions.
 `1x` is valid but equivalent to writing its activities directly. It can still be
 useful when generating or editing a program.
 
-## Infinite repeated block
+## Repeat
 
-The key `forever` repeats a non-empty sequence of activities without a final
-iteration:
+A program MAY have a `repeat` key whose value is `true` or `false`:
 
 ```yaml
 20-20-20:
-  - forever:
-      - 20m Work: blue
-      - 20s Break: green
+  repeat: true
+  activities:
+    - 20m Work: blue
+    - 20s Break: green
 ```
 
-An infinite block MUST be the final top-level entry because subsequent entries
-could never execute. It MUST contain activities only and MUST NOT contain another
-repeated block.
+`repeat` MUST be a boolean and defaults to `false` when omitted. It controls what
+happens after the last entry in `activities` finishes:
 
-The word `forever` is lowercase and case-sensitive.
+- When `repeat` is `true`, execution continues from the first entry in
+  `activities` and repeats indefinitely until the user stops the program.
+- When `repeat` is `false`, the timer returns to the first activity in
+  `activities` and stops there. The user starts it again with Start timer.
+
+`repeat` applies to the whole program. It is independent of, and unrelated to,
+any finite repeated block's own repetition count.
 
 ## Exact endings
 
@@ -255,10 +273,11 @@ round one fewer time and write the final work interval explicitly:
 
 ```yaml
 Four rounds:
-  - 3x:
-      - 30s Work: red
-      - 15s Rest: green
-  - 30s Work: red
+  activities:
+    - 3x:
+        - 30s Work: red
+        - 15s Rest: green
+    - 30s Work: red
 ```
 
 This rule is deliberately generic. Any ending can differ without adding
@@ -266,10 +285,11 @@ conditional syntax to activities or repeated blocks:
 
 ```yaml
 Intervals:
-  - 4x:
-      - 1m Run: red
-      - 2m Walk: green
-  - 5m Cool down: blue
+  activities:
+    - 4x:
+        - 1m Run: red
+        - 2m Walk: green
+    - 5m Cool down: blue
 ```
 
 ## Anchors and aliases
@@ -281,21 +301,23 @@ Reuse a complete activity:
 
 ```yaml
 Workout:
-  - 3x:
-      - &work
-        30s Work out: red
-      - 15s Rest: green
-  - *work
+  activities:
+    - 3x:
+        - &work
+          30s Work out: red
+        - 15s Rest: green
+    - *work
 ```
 
 Reuse a repeated-block body with a different count:
 
 ```yaml
 Workout:
-  - 3x: &round
-      - 30s Work out: red
-      - 15s Rest: green
-  - 2x: *round
+  activities:
+    - 3x: &round
+        - 30s Work out: red
+        - 15s Rest: green
+    - 2x: *round
 ```
 
 After resolving an alias, the resulting node MUST be valid at the alias location.
@@ -314,8 +336,9 @@ YAML comments may appear anywhere YAML permits them:
 
 ```yaml
 Desk routine:
-  - 20m Focus: blue       # Disable notifications
-  - 20s Look far away: green
+  activities:
+    - 20m Focus: blue       # Disable notifications
+    - 20s Look far away: green
 ```
 
 Comments have no execution semantics. A formatter SHOULD preserve them when
@@ -323,22 +346,26 @@ possible.
 
 ## Execution model
 
-After parsing and validation, a program is evaluated from the first top-level
-entry to the last:
+After parsing and validation, a program is evaluated from the first entry in
+`activities` to the last:
 
 1. An activity sets the window title and active color, then counts down its full
    duration.
 2. A finite repeated block evaluates its activity sequence exactly `n` times.
-3. An infinite repeated block evaluates its activity sequence repeatedly until the
-   user stops the program.
-4. When a finite program reaches its end, it is complete.
+3. When the last entry finishes, `repeat` decides what happens next. If `repeat`
+   is `true`, execution continues from the first entry in `activities`. If
+   `repeat` is `false`, the timer returns to the first activity in `activities`
+   and stops.
 
 Pausing freezes the current activity's remaining duration. Resuming continues the
-same activity. Pausing, resuming, or restarting MUST NOT alter the expanded order
-of activities.
+same activity. Pausing, resuming, resetting, or reaching the end of a
+non-repeating program MUST NOT alter the order in which `activities` would be
+evaluated on the next run.
 
-Implementations SHOULD evaluate repeated blocks lazily. They MUST NOT expand a
-large finite count or `forever` into an in-memory list before execution.
+Implementations SHOULD evaluate repeated blocks lazily and SHOULD evaluate a
+`repeat: true` program as a loop rather than an expansion. They MUST NOT expand a
+large finite count, or a repeating program, into an in-memory list before
+execution.
 
 ## Validation
 
@@ -358,7 +385,7 @@ Examples:
 Line 4, column 5: repetition count "0x" must be at least 1x.
 Line 6, column 22: "gren" is not a Fluent color; did you mean "green"?
 Line 9, column 7: repeated blocks cannot contain another repeated block.
-Line 12, column 3: "forever" must be the final program entry.
+Line 12, column 3: program "repeat" must be true or false.
 ```
 
 Implementations SHOULD report multiple independent validation errors in one pass.
@@ -371,9 +398,10 @@ A canonical formatter produces:
 - two-space indentation and no tabs;
 - block-style mappings and sequences;
 - lowercase, normalized durations;
-- lowercase `x` and `forever`;
+- lowercase `x`;
 - color names with the exact canonical casing listed above;
 - no leading zeroes in repetition counts;
+- `repeat: false` omitted, since it is the default;
 - quoted strings only where needed for valid, unambiguous YAML.
 
 Blank lines may be inserted between logical groups for readability and have no
@@ -385,13 +413,13 @@ YAML is parsed first. The following grammar describes the Timer DSL values withi
 the resulting YAML nodes; it is not a replacement for the YAML grammar.
 
 ```text
-program       = { program-name: entries }
+program       = { program-name: program-body }
+program-body  = { ["repeat": boolean], "activities": entries }
 entries       = entry, { entry }
-entry         = activity | finite-repeat | infinite-repeat
+entry         = activity | finite-repeat
 activity      = { activity-key: color }
 activity-key  = duration, whitespace, title
 finite-repeat = { positive-integer "x": activities }
-infinite-repeat = { "forever": activities }
 activities    = activity, { activity }
 duration      = [hours], [minutes], [seconds]
 hours         = integer, ("h" | "H")
@@ -419,3 +447,4 @@ Timer DSL v1 intentionally does not provide:
 
 These features can be considered independently in later versions without making
 the core timer notation more difficult to read.
+</content>

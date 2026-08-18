@@ -8,12 +8,13 @@ export type ProgramEntry =
   | ({ type: "activity" } & Activity)
   | {
       type: "repeat";
-      count: number | null;
+      count: number;
       activities: Activity[];
     };
 
 export type ProgramDefinition = {
   name: string;
+  repeat: boolean;
   entries: ProgramEntry[];
 };
 
@@ -41,5 +42,4 @@ export type TimerUpdate = {
   remaining: number;
   paused: boolean;
   running: boolean;
-  completed: boolean;
 };

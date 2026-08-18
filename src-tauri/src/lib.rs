@@ -89,7 +89,7 @@ enum ProgramEntry {
         color: String,
     },
     Repeat {
-        count: Option<u64>,
+        count: u64,
         activities: Vec<Activity>,
     },
 }
@@ -98,6 +98,7 @@ enum ProgramEntry {
 #[serde(rename_all = "camelCase")]
 struct ProgramDefinition {
     name: String,
+    repeat: bool,
     entries: Vec<ProgramEntry>,
 }
 
@@ -107,6 +108,7 @@ struct StoredProgram {
     id: String,
     name: String,
     source: String,
+    repeat: bool,
     entries: Vec<ProgramEntry>,
 }
 
@@ -148,7 +150,6 @@ struct TimerUpdate {
     remaining: u64,
     paused: bool,
     running: bool,
-    completed: bool,
 }
 
 #[derive(Clone, Copy, Default)]
@@ -165,7 +166,6 @@ struct Timer {
     paused_for: Duration,
     paused: bool,
     running: bool,
-    completed: bool,
     revision: u64,
 }
 
@@ -184,26 +184,25 @@ fn default_program() -> StoredProgram {
         name: "20-20-20".into(),
         source: concat!(
             "20-20-20:\n",
-            "  - forever:\n",
-            "      - 20m Work: blue\n",
-            "      - 20s Break: green\n",
+            "  repeat: true\n",
+            "  activities:\n",
+            "    - 20m Work: blue\n",
+            "    - 20s Break: green\n",
         )
         .into(),
-        entries: vec![ProgramEntry::Repeat {
-            count: None,
-            activities: vec![
-                Activity {
-                    title: "Work".into(),
-                    duration: 20 * 60,
-                    color: "blue".into(),
-                },
-                Activity {
-                    title: "Break".into(),
-                    duration: 20,
-                    color: "green".into(),
-                },
-            ],
-        }],
+        repeat: true,
+        entries: vec![
+            ProgramEntry::Activity {
+                title: "Work".into(),
+                duration: 20 * 60,
+                color: "blue".into(),
+            },
+            ProgramEntry::Activity {
+                title: "Break".into(),
+                duration: 20,
+                color: "green".into(),
+            },
+        ],
     }
 }
 
@@ -220,7 +219,6 @@ fn initial_state() -> AppState {
             paused_for: duration,
             paused: false,
             running: false,
-            completed: false,
             revision: 0,
         },
     }
@@ -265,18 +263,26 @@ fn advance_cursor(program: &StoredProgram, cursor: &mut Cursor) -> Option<Activi
                 cursor.activity += 1;
             } else {
                 cursor.activity = 0;
-                match count {
-                    None => cursor.repetition = cursor.repetition.wrapping_add(1),
-                    Some(total) if cursor.repetition + 1 < *total => cursor.repetition += 1,
-                    Some(_) => {
-                        cursor.entry += 1;
-                        cursor.repetition = 0;
-                    }
+                if cursor.repetition + 1 < *count {
+                    cursor.repetition += 1;
+                } else {
+                    cursor.entry += 1;
+                    cursor.repetition = 0;
                 }
             }
         }
     }
     current_activity_owned(program, cursor)
+}
+
+/// Called when `advance_cursor` has run through every top-level entry.
+/// Resets the cursor to the first activity and reports whether the timer
+/// should keep running (the program repeats) or stop there.
+fn wrap_cursor(program: &StoredProgram, cursor: &mut Cursor) -> (Activity, bool) {
+    *cursor = Cursor::default();
+    let activity = current_activity_owned(program, cursor)
+        .expect("validated program has a first activity");
+    (activity, program.repeat)
 }
 
 fn selected_program(state: &AppState) -> &StoredProgram {
@@ -298,7 +304,6 @@ fn reset_timer(state: &mut AppState) {
         paused_for: duration,
         paused: false,
         running: false,
-        completed: false,
         revision,
     };
 }
@@ -311,14 +316,9 @@ fn seconds_ceil(duration: Duration) -> u64 {
 
 fn snapshot(state: &AppState) -> TimerUpdate {
     let program = selected_program(state);
-    let activity = current_activity_owned(program, &state.timer.cursor).unwrap_or(Activity {
-        title: "Complete".into(),
-        duration: 0,
-        color: "blue".into(),
-    });
-    let remaining = if state.timer.completed {
-        0
-    } else if state.timer.paused {
+    let activity = current_activity_owned(program, &state.timer.cursor)
+        .expect("validated cursor points to an activity");
+    let remaining = if state.timer.paused {
         seconds_ceil(state.timer.paused_for)
     } else if state.timer.running {
         seconds_ceil(
@@ -338,7 +338,6 @@ fn snapshot(state: &AppState) -> TimerUpdate {
         remaining,
         paused: state.timer.paused,
         running: state.timer.running,
-        completed: state.timer.completed,
     }
 }
 
@@ -390,7 +389,7 @@ fn validate_program(program: &StoredProgram) -> Result<(), String> {
         return Err("The program contains too many entries.".into());
     }
 
-    for (index, entry) in program.entries.iter().enumerate() {
+    for entry in &program.entries {
         match entry {
             ProgramEntry::Activity {
                 title,
@@ -402,14 +401,11 @@ fn validate_program(program: &StoredProgram) -> Result<(), String> {
                 color: color.clone(),
             })?,
             ProgramEntry::Repeat { count, activities } => {
-                if count == &Some(0) {
+                if *count == 0 {
                     return Err("A repetition count must be at least 1x.".into());
                 }
                 if activities.is_empty() {
                     return Err("A repeated block must contain an activity.".into());
-                }
-                if count.is_none() && index + 1 != program.entries.len() {
-                    return Err("The forever block must be the final program entry.".into());
                 }
                 for activity in activities {
                     validate_activity(activity)?;
@@ -474,9 +470,6 @@ fn timer_action(action: &str, shared: State<'_, Shared>, app: tauri::AppHandle) 
 
     match action {
         "play" => {
-            if state.timer.completed {
-                reset_timer(&mut state);
-            }
             let activity = current_activity_owned(selected_program(&state), &state.timer.cursor)
                 .expect("validated cursor points to an activity");
             let duration = Duration::from_secs(activity.duration);
@@ -585,6 +578,7 @@ fn import_program(
         id: id.clone(),
         name: program.name.trim().into(),
         source,
+        repeat: program.repeat,
         entries: program.entries,
     };
     validate_program(&stored)?;
@@ -684,28 +678,32 @@ mod tests {
         }
     }
 
-    fn program(entries: Vec<ProgramEntry>) -> StoredProgram {
+    fn program(repeat: bool, entries: Vec<ProgramEntry>) -> StoredProgram {
         StoredProgram {
             id: "test".into(),
             name: "Test".into(),
             source: "Test: []".into(),
+            repeat,
             entries,
         }
     }
 
     #[test]
     fn finite_blocks_repeat_exactly_before_an_explicit_ending() {
-        let program = program(vec![
-            ProgramEntry::Repeat {
-                count: Some(3),
-                activities: vec![activity("Work", 30, "red"), activity("Rest", 15, "green")],
-            },
-            ProgramEntry::Activity {
-                title: "Work".into(),
-                duration: 30,
-                color: "red".into(),
-            },
-        ]);
+        let program = program(
+            false,
+            vec![
+                ProgramEntry::Repeat {
+                    count: 3,
+                    activities: vec![activity("Work", 30, "red"), activity("Rest", 15, "green")],
+                },
+                ProgramEntry::Activity {
+                    title: "Work".into(),
+                    duration: 30,
+                    color: "red".into(),
+                },
+            ],
+        );
         let mut cursor = Cursor::default();
         let mut titles = vec![current_activity_owned(&program, &cursor).unwrap().title];
         while let Some(next) = advance_cursor(&program, &mut cursor) {
@@ -718,36 +716,39 @@ mod tests {
     }
 
     #[test]
-    fn forever_blocks_cycle_without_expansion() {
-        let program = program(vec![ProgramEntry::Repeat {
-            count: None,
-            activities: vec![activity("Work", 30, "blue"), activity("Break", 10, "green")],
-        }]);
+    fn repeating_program_wraps_back_to_the_first_activity_and_keeps_running() {
+        let program = program(
+            true,
+            vec![activity_entry("Work", 30, "blue"), activity_entry("Break", 10, "green")],
+        );
         let mut cursor = Cursor::default();
-        let mut titles = vec![current_activity_owned(&program, &cursor).unwrap().title];
-        for _ in 0..5 {
-            titles.push(advance_cursor(&program, &mut cursor).unwrap().title);
-        }
-        assert_eq!(titles, ["Work", "Break", "Work", "Break", "Work", "Break"]);
+        advance_cursor(&program, &mut cursor); // Work -> Break
+        assert!(advance_cursor(&program, &mut cursor).is_none()); // Break -> end of entries
+
+        let (activity, keep_running) = wrap_cursor(&program, &mut cursor);
+        assert_eq!(activity.title, "Work");
+        assert!(keep_running);
+        assert_eq!(cursor.entry, 0);
     }
 
     #[test]
-    fn forever_must_be_the_final_entry() {
-        let invalid = program(vec![
-            ProgramEntry::Repeat {
-                count: None,
-                activities: vec![activity("Work", 30, "blue")],
-            },
-            ProgramEntry::Activity {
-                title: "Unreachable".into(),
-                duration: 10,
-                color: "red".into(),
-            },
-        ]);
-        assert_eq!(
-            validate_program(&invalid).unwrap_err(),
-            "The forever block must be the final program entry."
-        );
+    fn non_repeating_program_wraps_back_to_the_first_activity_and_stops() {
+        let program = program(false, vec![activity_entry("Work", 30, "blue")]);
+        let mut cursor = Cursor::default();
+        assert!(advance_cursor(&program, &mut cursor).is_none());
+
+        let (activity, keep_running) = wrap_cursor(&program, &mut cursor);
+        assert_eq!(activity.title, "Work");
+        assert!(!keep_running);
+        assert_eq!(cursor.entry, 0);
+    }
+
+    fn activity_entry(title: &str, duration: u64, color: &str) -> ProgramEntry {
+        ProgramEntry::Activity {
+            title: title.into(),
+            duration,
+            color: color.into(),
+        }
     }
 }
 
@@ -836,10 +837,16 @@ pub fn run() {
                             state.timer.paused_for = duration;
                         }
                         None => {
-                            state.timer.running = false;
-                            state.timer.paused = false;
-                            state.timer.completed = true;
-                            state.timer.paused_for = Duration::ZERO;
+                            let (activity, keep_running) =
+                                wrap_cursor(&program, &mut state.timer.cursor);
+                            let duration = Duration::from_secs(activity.duration);
+                            state.timer.paused_for = duration;
+                            if keep_running {
+                                state.timer.deadline = Instant::now() + duration;
+                            } else {
+                                state.timer.running = false;
+                                state.timer.paused = false;
+                            }
                         }
                     }
                     let update = snapshot(&state);

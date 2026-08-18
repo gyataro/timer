@@ -28,11 +28,6 @@ export function renderTimer(state: TimerUpdate): void {
   element("play").hidden = state.running || state.paused;
   element("pause").hidden = !state.running || state.paused;
   element("resume").hidden = !state.paused;
-  element("play").title = state.completed ? "Restart timer" : "Start timer";
-  element("play").setAttribute(
-    "aria-label",
-    state.completed ? "Restart timer" : "Start timer",
-  );
 }
 
 function icon(path: string): SVGSVGElement {
