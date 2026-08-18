@@ -8,13 +8,15 @@ import {
   showProgramMessage,
   showProgramsPage,
 } from "./ui";
-import type { ProgramLibrary, TimerUpdate } from "./types";
+import type { ProgramExport, ProgramLibrary, TimerUpdate } from "./types";
 import {
   accentBaseColor,
   baseLayerLuminance,
   fluentButton,
   fluentDialog,
   fluentDivider,
+  fluentMenu,
+  fluentMenuItem,
   provideFluentDesignSystem,
   StandardLuminance,
 } from "@fluentui/web-components";
@@ -27,6 +29,8 @@ provideFluentDesignSystem().register(
   fluentButton(),
   fluentDialog(),
   fluentDivider(),
+  fluentMenu(),
+  fluentMenuItem(),
 );
 
 const systemTheme = window.matchMedia("(prefers-color-scheme: dark)");
@@ -136,6 +140,32 @@ async function selectProgram(id: string): Promise<void> {
   }
 }
 
+async function exportProgram(id: string): Promise<void> {
+  if (libraryPending) return;
+  libraryPending = true;
+  try {
+    const program = await invoke<ProgramExport>("get_program_source", { id });
+    const filename = `${program.name
+      .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-")
+      .replace(/[. ]+$/g, "") || "timer-program"}.yaml`;
+    const url = URL.createObjectURL(
+      new Blob([program.source], { type: "application/yaml;charset=utf-8" }),
+    );
+    const download = document.createElement("a");
+    download.href = url;
+    download.download = filename;
+    document.body.append(download);
+    download.click();
+    download.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showProgramMessage(`Exported ${filename}.`);
+  } catch (error) {
+    showProgramMessage(errorMessage(error), true);
+  } finally {
+    libraryPending = false;
+  }
+}
+
 async function deleteProgram(id: string): Promise<void> {
   if (libraryPending) return;
   libraryPending = true;
@@ -175,6 +205,7 @@ async function connectTauri(): Promise<void> {
     closePrograms,
     importProgram,
     selectProgram,
+    exportProgram,
     deleteProgram,
   });
   applyUpdate(await invoke<TimerUpdate>("get_timer_state"));

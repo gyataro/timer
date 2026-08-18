@@ -28,6 +28,11 @@ export type ProgramLibrary = {
   programs: ProgramSummary[];
 };
 
+export type ProgramExport = {
+  name: string;
+  source: string;
+};
+
 export type TimerUpdate = {
   programId: string;
   programName: string;

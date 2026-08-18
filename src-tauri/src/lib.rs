@@ -132,6 +132,12 @@ struct ProgramLibrary {
     programs: Vec<ProgramSummary>,
 }
 
+#[derive(serde::Serialize)]
+struct ProgramExport {
+    name: String,
+    source: String,
+}
+
 #[derive(Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 struct TimerUpdate {
@@ -520,6 +526,20 @@ fn get_program_library(shared: State<'_, Shared>) -> ProgramLibrary {
 }
 
 #[tauri::command]
+fn get_program_source(id: &str, shared: State<'_, Shared>) -> Result<ProgramExport, String> {
+    let state = shared.0 .0.lock().unwrap();
+    let program = state
+        .programs
+        .iter()
+        .find(|program| program.id == id)
+        .ok_or_else(|| "The program no longer exists.".to_string())?;
+    Ok(ProgramExport {
+        name: program.name.clone(),
+        source: program.source.clone(),
+    })
+}
+
+#[tauri::command]
 fn import_program(
     program: ProgramDefinition,
     source: String,
@@ -732,6 +752,7 @@ pub fn run() {
             timer_action,
             get_timer_state,
             get_program_library,
+            get_program_source,
             import_program,
             select_program,
             delete_program,

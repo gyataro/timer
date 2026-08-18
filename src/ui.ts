@@ -9,6 +9,7 @@ type UiHandlers = {
   closePrograms: () => void | Promise<void>;
   importProgram: (file: File) => void | Promise<void>;
   selectProgram: (id: string) => void | Promise<void>;
+  exportProgram: (id: string) => void | Promise<void>;
   deleteProgram: (id: string) => void | Promise<void>;
 };
 
@@ -47,6 +48,15 @@ function icon(path: string): SVGSVGElement {
   return svg;
 }
 
+function closeProgramMenus(): void {
+  document.querySelectorAll<HTMLElement>(".program-menu").forEach((menu) => {
+    menu.hidden = true;
+  });
+  document.querySelectorAll<HTMLElement>(".program-menu-button").forEach((button) => {
+    button.setAttribute("aria-expanded", "false");
+  });
+}
+
 export function renderProgramLibrary(library: ProgramLibrary): void {
   const list = element<HTMLDivElement>("program-list");
   list.replaceChildren();
@@ -57,30 +67,58 @@ export function renderProgramLibrary(library: ProgramLibrary): void {
     row.setAttribute("role", "listitem");
     row.dataset.selected = program.selected.toString();
 
-    const select = document.createElement("fluent-button");
+    const select = document.createElement("button");
     select.className = "program-select";
-    select.setAttribute("appearance", "stealth");
-    select.textContent = program.name;
+    select.type = "button";
     select.title = program.selected ? `${program.name} is active` : `Use ${program.name}`;
+    const name = document.createElement("span");
+    name.className = "program-name";
+    name.textContent = program.name;
+    const detail = document.createElement("span");
+    detail.className = "program-detail";
+    detail.textContent = program.selected ? "Current program" : "Timer program";
+    select.append(name, detail);
     if (program.selected) {
       select.setAttribute("aria-current", "true");
     } else {
-      select.onclick = () => void handlers?.selectProgram(program.id);
+      select.onclick = () => {
+        closeProgramMenus();
+        void handlers?.selectProgram(program.id);
+      };
     }
 
     row.append(select);
 
-    const remove = document.createElement("fluent-button");
-    remove.className = "program-delete";
-    remove.setAttribute("appearance", "stealth");
-    remove.setAttribute("aria-label", `Delete ${program.name}`);
-    remove.title = `Delete ${program.name}`;
-    remove.append(icon("M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2zm1 6v8h2v-8h-2zm4 0v8h2v-8h-2z"));
+    const menuContainer = document.createElement("div");
+    menuContainer.className = "program-menu-container";
+    const menuButton = document.createElement("fluent-button");
+    menuButton.className = "program-menu-button";
+    menuButton.setAttribute("appearance", "stealth");
+    menuButton.setAttribute("aria-label", `More options for ${program.name}`);
+    menuButton.setAttribute("aria-haspopup", "menu");
+    menuButton.setAttribute("aria-expanded", "false");
+    menuButton.title = "More options";
+    menuButton.append(icon("M5 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"));
+
+    const menu = document.createElement("fluent-menu");
+    menu.className = "program-menu";
+    menu.hidden = true;
+    const exportItem = document.createElement("fluent-menu-item");
+    exportItem.textContent = "Export";
+    exportItem.onclick = (event) => {
+      event.stopPropagation();
+      closeProgramMenus();
+      void handlers?.exportProgram(program.id);
+    };
+    const deleteItem = document.createElement("fluent-menu-item");
+    deleteItem.textContent = "Delete";
     if (library.programs.length === 1) {
-      remove.setAttribute("disabled", "");
-      remove.title = "At least one program is required";
+      deleteItem.setAttribute("disabled", "");
+      deleteItem.title = "At least one program is required";
     } else {
-      remove.onclick = () => {
+      deleteItem.onclick = (event) => {
+        event.stopPropagation();
+        closeProgramMenus();
         pendingDelete = { id: program.id, name: program.name };
         element<HTMLParagraphElement>("delete-dialog-description").textContent =
           `“${program.name}” will be removed from Timer.`;
@@ -88,7 +126,16 @@ export function renderProgramLibrary(library: ProgramLibrary): void {
         element("cancel-delete").focus();
       };
     }
-    row.append(remove);
+    menu.append(exportItem, deleteItem);
+    menuButton.onclick = (event) => {
+      event.stopPropagation();
+      const opening = menu.hidden;
+      closeProgramMenus();
+      menu.hidden = !opening;
+      menuButton.setAttribute("aria-expanded", opening.toString());
+    };
+    menuContainer.append(menuButton, menu);
+    row.append(menuContainer);
     list.append(row);
   }
 }
@@ -135,4 +182,5 @@ export function setUiHandlers(next: UiHandlers): void {
     if (program) void next.deleteProgram(program.id);
   };
   element("delete-dialog").addEventListener("dismiss", closeDeleteDialog);
+  document.addEventListener("click", closeProgramMenus);
 }
