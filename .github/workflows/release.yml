@@ -57,7 +57,6 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: Timer ${{ github.ref_name }}
-          generateReleaseNotes: true
-          releaseDraft: false
+          releaseDraft: true
           prerelease: false
           args: --bundles nsis,msi
