@@ -1,0 +1,7 @@
+# The 20-20-20 eye-care rule: every 20 minutes, look at something 20 feet
+# away for 20 seconds. Repeats forever until you stop it.
+20-20-20:
+  repeat: true
+  activities:
+    - 20m Work: blue
+    - 20s Break: green

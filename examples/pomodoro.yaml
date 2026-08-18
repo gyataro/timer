@@ -1,0 +1,9 @@
+# The Pomodoro technique: four 25-minute focus sessions, each followed by
+# a 5-minute break, then one 15-minute long break. Runs once and stops.
+Pomodoro:
+  activities:
+    - 4x:
+        - 25m Focus: blue
+        - 5m Break: green
+    - 25m Focus: blue
+    - 15m Long break: lavender

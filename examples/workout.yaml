@@ -1,0 +1,13 @@
+# A HIIT-style workout: warm up, four fast sprint/recover rounds, a walk
+# to reset, three slower sprint/recover rounds, then cool down.
+Workout:
+  activities:
+    - 5m Warm up: marigold
+    - 4x:
+        - 40s Sprint: red
+        - 20s Recover: green
+    - 2m Walk: lightBlue
+    - 3x:
+        - 30s Sprint: red
+        - 30s Recover: green
+    - 5m Cool down: blue

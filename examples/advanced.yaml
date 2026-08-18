@@ -1,0 +1,10 @@
+# A circuit that demonstrates YAML anchors and aliases: the round below
+# (&round) is defined once and reused (*round) with a different repeat
+# count, instead of writing the same work/rest pair out twice.
+Circuit:
+  activities:
+    - 3x: &round
+        - 45s Work: red
+        - 15s Rest: green
+    - 2x: *round
+    - 2m Cool down: blue
