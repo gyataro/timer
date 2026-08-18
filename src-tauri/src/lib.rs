@@ -540,6 +540,17 @@ fn get_program_source(id: &str, shared: State<'_, Shared>) -> Result<ProgramExpo
 }
 
 #[tauri::command]
+fn export_program_to_path(id: &str, path: &str, shared: State<'_, Shared>) -> Result<(), String> {
+    let state = shared.0 .0.lock().unwrap();
+    let program = state
+        .programs
+        .iter()
+        .find(|program| program.id == id)
+        .ok_or_else(|| "The program no longer exists.".to_string())?;
+    fs::write(path, &program.source).map_err(|error| format!("Could not save program: {error}"))
+}
+
+#[tauri::command]
 fn import_program(
     program: ProgramDefinition,
     source: String,
@@ -747,12 +758,14 @@ pub fn run() {
     let worker_state = Arc::clone(&shared);
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .manage(Shared(managed_state))
         .invoke_handler(tauri::generate_handler![
             timer_action,
             get_timer_state,
             get_program_library,
             get_program_source,
+            export_program_to_path,
             import_program,
             select_program,
             delete_program,

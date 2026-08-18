@@ -24,6 +24,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { LogicalSize } from "@tauri-apps/api/dpi";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { save } from "@tauri-apps/plugin-dialog";
 
 provideFluentDesignSystem().register(
   fluentButton(),
@@ -148,17 +149,13 @@ async function exportProgram(id: string): Promise<void> {
     const filename = `${program.name
       .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-")
       .replace(/[. ]+$/g, "") || "timer-program"}.yaml`;
-    const url = URL.createObjectURL(
-      new Blob([program.source], { type: "application/yaml;charset=utf-8" }),
-    );
-    const download = document.createElement("a");
-    download.href = url;
-    download.download = filename;
-    document.body.append(download);
-    download.click();
-    download.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    showProgramMessage(`Exported ${filename}.`);
+    const destination = await save({
+      defaultPath: filename,
+      filters: [{ name: "Timer program", extensions: ["yaml", "yml"] }],
+    });
+    if (!destination) return;
+    await invoke("export_program_to_path", { id, path: destination });
+    showProgramMessage(`Exported ${program.name} to ${destination}.`);
   } catch (error) {
     showProgramMessage(errorMessage(error), true);
   } finally {

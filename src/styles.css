@@ -201,6 +201,13 @@ fluent-button[appearance="stealth"] {
   min-width: 132px;
 }
 
+#delete-dialog {
+  /* Fluent's dialog defaults to a fixed 640x480 box, which is bigger than
+     this app's window and forces the surrounding region to scroll. */
+  --dialog-width: 280px;
+  --dialog-height: auto;
+}
+
 .delete-dialog-content {
   min-width: 280px;
   padding: 20px;
