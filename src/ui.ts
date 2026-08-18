@@ -70,13 +70,13 @@ export function renderProgramLibrary(library: ProgramLibrary): void {
     const select = document.createElement("button");
     select.className = "program-select";
     select.type = "button";
-    select.title = program.selected ? `${program.name} is active` : `Use ${program.name}`;
+    select.title = program.selected ? `${program.name} is selected` : `Use ${program.name}`;
     const name = document.createElement("span");
     name.className = "program-name";
     name.textContent = program.name;
     const detail = document.createElement("span");
     detail.className = "program-detail";
-    detail.textContent = program.selected ? "Current program" : "Timer program";
+    detail.textContent = program.selected ? "Selected" : "Timer program";
     select.append(name, detail);
     if (program.selected) {
       select.setAttribute("aria-current", "true");
@@ -91,6 +91,12 @@ export function renderProgramLibrary(library: ProgramLibrary): void {
 
     const menuContainer = document.createElement("div");
     menuContainer.className = "program-menu-container";
+    if (program.selected) {
+      const selectedIcon = icon("M3.37 10.17a.5.5 0 0 0-.74.66l4 4.5c.19.22.52.23.72.02l10.5-10.5a.5.5 0 0 0-.7-.7L7.02 14.27z");
+      selectedIcon.classList.add("program-selected-icon");
+      selectedIcon.setAttribute("aria-hidden", "true");
+      menuContainer.append(selectedIcon);
+    }
     const menuButton = document.createElement("fluent-button");
     menuButton.className = "program-menu-button";
     menuButton.setAttribute("appearance", "stealth");

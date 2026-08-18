@@ -17,6 +17,12 @@ body {
   font-family: "Segoe UI Variable", "Segoe UI", sans-serif;
 }
 
+/* Native Win11 icon buttons are invisible until hovered; Fluent's stealth
+   "rest" fill is a faint but visible tint, so zero it out here. */
+fluent-button[appearance="stealth"] {
+  --neutral-fill-stealth-rest: transparent;
+}
+
 .timer-shell {
   position: relative;
   display: grid;
@@ -116,14 +122,13 @@ body {
 }
 
 .program-row {
-  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   box-sizing: border-box;
   min-height: 68px;
-  padding: 6px 8px 6px 16px;
+  padding: 10px 16px;
   border: 1px solid var(--neutral-stroke-divider-rest);
   border-radius: var(--layer-corner-radius);
   background: var(--neutral-layer-2);
@@ -135,17 +140,6 @@ body {
 
 .program-row[data-selected="true"] {
   background: var(--neutral-layer-2);
-}
-
-.program-row[data-selected="true"]::before {
-  position: absolute;
-  top: 22px;
-  bottom: 22px;
-  left: 0;
-  width: 3px;
-  border-radius: 2px;
-  background: var(--accent-fill-rest);
-  content: "";
 }
 
 .program-select {
@@ -188,7 +182,15 @@ body {
 
 .program-menu-container {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   justify-self: end;
+}
+
+.program-selected-icon {
+  flex-shrink: 0;
+  color: var(--accent-fill-rest);
 }
 
 .program-menu {
