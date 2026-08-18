@@ -280,8 +280,8 @@ fn advance_cursor(program: &StoredProgram, cursor: &mut Cursor) -> Option<Activi
 /// should keep running (the program repeats) or stop there.
 fn wrap_cursor(program: &StoredProgram, cursor: &mut Cursor) -> (Activity, bool) {
     *cursor = Cursor::default();
-    let activity = current_activity_owned(program, cursor)
-        .expect("validated program has a first activity");
+    let activity =
+        current_activity_owned(program, cursor).expect("validated program has a first activity");
     (activity, program.repeat)
 }
 
@@ -719,7 +719,10 @@ mod tests {
     fn repeating_program_wraps_back_to_the_first_activity_and_keeps_running() {
         let program = program(
             true,
-            vec![activity_entry("Work", 30, "blue"), activity_entry("Break", 10, "green")],
+            vec![
+                activity_entry("Work", 30, "blue"),
+                activity_entry("Break", 10, "green"),
+            ],
         );
         let mut cursor = Cursor::default();
         advance_cursor(&program, &mut cursor); // Work -> Break
