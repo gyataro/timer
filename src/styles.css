@@ -79,6 +79,15 @@ fluent-button[appearance="stealth"] {
   gap: 6px;
 }
 
+/* Dim the secondary transport buttons so play/pause/resume stands out. */
+.timer-actions fluent-button[appearance="stealth"] {
+  color: var(--neutral-foreground-hint);
+}
+
+.timer-actions fluent-button[appearance="stealth"]:hover {
+  color: var(--neutral-foreground-rest);
+}
+
 .activity-bar {
   position: absolute;
   right: 0;
