@@ -37,7 +37,7 @@ export function renderTimer(state: TimerUpdate): void {
 
 function icon(path: string): SVGSVGElement {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("viewBox", "0 0 20 20");
   svg.setAttribute("width", "18");
   svg.setAttribute("height", "18");
   svg.setAttribute("fill", "currentColor");
@@ -98,7 +98,7 @@ export function renderProgramLibrary(library: ProgramLibrary): void {
     menuButton.setAttribute("aria-haspopup", "menu");
     menuButton.setAttribute("aria-expanded", "false");
     menuButton.title = "More options";
-    menuButton.append(icon("M5 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"));
+    menuButton.append(icon("M6.25 10a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0m5 0a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0M15 11.25a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5"));
 
     const menu = document.createElement("fluent-menu");
     menu.className = "program-menu";

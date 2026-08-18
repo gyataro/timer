@@ -111,6 +111,7 @@ body {
 
 .program-list {
   display: grid;
+  grid-template-columns: 1fr;
   gap: 6px;
 }
 
@@ -124,7 +125,7 @@ body {
   min-height: 68px;
   padding: 6px 8px 6px 16px;
   border: 1px solid var(--neutral-stroke-divider-rest);
-  border-radius: 6px;
+  border-radius: var(--layer-corner-radius);
   background: var(--neutral-layer-2);
 }
 
