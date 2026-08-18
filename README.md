@@ -6,6 +6,8 @@ This was inspired by [jotaen/timer](https://github.com/jotaen/timer). I rebuilt 
 
 It follows Windows 11's native UI conventions and keeps running in the system tray when its window is closed.
 
+![Timer running a demo program, then switching between saved programs in the program list](docs/demo.gif)
+
 Built with [Tauri 2](https://v2.tauri.app/), TypeScript, Vite, and [Fluent UI Web Components](https://github.com/microsoft/fluentui/tree/master/packages/web-components).
 
 ## Getting started
