@@ -1,0 +1,140 @@
+html,
+body,
+.view {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+body {
+  overflow: hidden;
+  background: var(--neutral-layer-1);
+  color: var(--neutral-foreground-rest);
+  font-family: "Segoe UI Variable", "Segoe UI", sans-serif;
+}
+
+.timer-shell {
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  padding: 10px 12px 12px;
+  box-sizing: border-box;
+  grid-template-rows: 1fr auto auto;
+  gap: 9px;
+}
+
+.timer-content {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.activity-name {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timer-display {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 7px;
+  font-variant-numeric: tabular-nums;
+}
+
+#timer-value {
+  font-size: 48px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -2px;
+}
+
+#timer-unit {
+  color: var(--neutral-foreground-hint);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.timer-actions {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.activity-bar {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: var(--accent-fill-rest);
+}
+
+.programs-view {
+  box-sizing: border-box;
+  padding: 14px;
+  overflow: auto;
+}
+
+.programs-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.programs-header h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.program-message {
+  margin: 0 0 12px;
+  color: var(--neutral-foreground-hint);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.program-list {
+  display: grid;
+  gap: 8px;
+}
+
+.program-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  min-height: 52px;
+  padding: 6px;
+}
+
+.program-select {
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+}
+
+.current-badge {
+  white-space: nowrap;
+}
+
+.program-delete {
+  justify-self: end;
+}

@@ -1,0 +1,26 @@
+{
+  "name": "timer",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A minimal 20-20-20 eye-care timer for the desktop.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "check": "pnpm check:versions && tsc --noEmit",
+    "check:versions": "node scripts/check-version.mjs",
+    "preview": "vite preview",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@fluentui/web-components": "^2.6.0",
+    "@tauri-apps/api": "^2",
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "typescript": "~6.0.3",
+    "vite": "^8.0.16"
+  },
+  "packageManager": "pnpm@11.22.0+sha512.1ff870c4c6133dfd88fb2afc46dd13d47f09c9794b438c6fdb47ca98caf3bc16381ee0be93a091b8e3824cf01f889f46d7d9e20910fb0be1ab0fb5baa80dd621"
+}
